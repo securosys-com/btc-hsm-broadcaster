@@ -109,29 +109,17 @@ if change > 546:
 
 tx = Tx(version=2, lock_time=0, vin=[tx_in], vout=tx_outs)
 
-# --- Signature (PreHash) ---
-sighash = calculate_segwit_v0_sighash(script_code_bytes, tx, 0, 0x01, utxo["value"])
-logger.info(f"Sighash: {sighash.hex()}")
-try:
-    sig = sign_with_hsm(HSM_TSB_API_URL, sighash, HSM_KEY_LABEL, HSM_ACCESS_TOKEN)
-except Exception as e:
-    logger.error(f"HSM signing failed: {e}")
-    exit()
-
 # --- Signature (HSM Hash) ---
-logger.info("Transaction to be signed: tx.in:")
-logger.info(tx.vin)
 
 tx_raw_payload = get_segwit_v0_data_for_hsm_sha256(script_code_bytes, tx, 0, 0x01, utxo["value"])
 try:
-    presigned_sig = sign_with_hsm(HSM_TSB_API_URL, tx_raw_payload, HSM_KEY_LABEL, HSM_ACCESS_TOKEN)        
-    #sig = sign_with_hsm(HSM_TSB_API_URL, tx_raw_payload, HSM_KEY_LABEL, HSM_ACCESS_TOKEN)
+    presigned_sig = sign_with_hsm(HSM_TSB_API_URL, tx_raw_payload, HSM_KEY_LABEL, HSM_ACCESS_TOKEN)            
 except Exception as e:
     logger.error(f"HSM signing failed: {e}")
     exit()
 
 # --- Witness Assignment ---
-witness = Witness([sig + b"\x01", compressed_pubkey])
+witness = Witness([presigned_sig + b"\x01", compressed_pubkey])
 tx.vin[0].script_witness = witness
 
 # --- Finalize ---
