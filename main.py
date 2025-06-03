@@ -133,4 +133,4 @@ logger.info(f"vSize: {tx.vsize} bytes")
 logger.info(f"Fee: {fee_paid} sats ({fee_paid / tx.vsize:.2f} sat/vbyte)")
 
 # Uncomment to broadcast the signed transaction
-#txid = broadcast_tx(NODE_API_URL, access_token, tx_hex)
+txid = broadcast_tx(NODE_API_URL, access_token, tx_hex)
