@@ -38,12 +38,14 @@ def sign_with_hsm(tsb_api_url: str, data_to_sign_bytes: bytes, key_label: str, a
         headers["Authorization"] = f"Bearer {access_token}"        
 
     payload_b64 = base64.b64encode(data_to_sign_bytes).decode("utf-8")
+    logger.info("sign payload: " + payload_b64)
+    # "signatureAlgorithm": "NONE_WITH_ECDSA", # Assuming ECDSA, adjust if key type varies
     payload = {
         "signRequest": {
             "payload": payload_b64,
             "payloadType": "UNSPECIFIED",  # Or HASH if data_to_sign_bytes is already a hash
             "signKeyName": key_label,
-            "signatureAlgorithm": "NONE_WITH_ECDSA", # Assuming ECDSA, adjust if key type varies
+            "signatureAlgorithm": "DOUBLE_SHA256_WITH_ECDSA", # Assuming ECDSA, adjust if key type varies      
             "signatureType": "DER"
         }
     }

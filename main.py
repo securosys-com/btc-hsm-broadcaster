@@ -3,7 +3,7 @@ import logging
 
 from hsm.securosys_rest_api import fetchKeysFromHsm, getOrCreateSecp256k1Key, getAddressAndPublicKey, sign_with_hsm
 from blockstream.blockstream_node import get_utxos, fetch_access_token, broadcast_tx
-from hsm.helper import get_compressed_pubkey_from_der, hash160_to_bech32_address
+from hsm.helper import get_compressed_pubkey_from_der, hash160_to_bech32_address, get_segwit_v0_data_for_hsm_sha256
 
 from btclib.tx.tx import Tx, TxIn, TxOut
 from btclib.script.witness import Witness
@@ -89,7 +89,7 @@ script_code_bytes = serialize_script_asm(
 access_token = fetch_access_token(NODE_CLIENT_ID, NODE_CLIENT_SECRET)
 utxos = get_utxos(NODE_API_URL, access_token, bech32_address)
 if not utxos:
-    logger.error(f"No UTXOs for address {bech32_address}")
+    logger.error(f"No UTXOs for address, fund your account first: {bech32_address}")
     exit()
 
 utxo = utxos[0]
@@ -109,12 +109,23 @@ if change > 546:
 
 tx = Tx(version=2, lock_time=0, vin=[tx_in], vout=tx_outs)
 
-# --- Signature ---
+# --- Signature (PreHash) ---
 sighash = calculate_segwit_v0_sighash(script_code_bytes, tx, 0, 0x01, utxo["value"])
 logger.info(f"Sighash: {sighash.hex()}")
-
 try:
     sig = sign_with_hsm(HSM_TSB_API_URL, sighash, HSM_KEY_LABEL, HSM_ACCESS_TOKEN)
+except Exception as e:
+    logger.error(f"HSM signing failed: {e}")
+    exit()
+
+# --- Signature (HSM Hash) ---
+logger.info("Transaction to be signed: tx.in:")
+logger.info(tx.vin)
+
+tx_raw_payload = get_segwit_v0_data_for_hsm_sha256(script_code_bytes, tx, 0, 0x01, utxo["value"])
+try:
+    presigned_sig = sign_with_hsm(HSM_TSB_API_URL, tx_raw_payload, HSM_KEY_LABEL, HSM_ACCESS_TOKEN)        
+    #sig = sign_with_hsm(HSM_TSB_API_URL, tx_raw_payload, HSM_KEY_LABEL, HSM_ACCESS_TOKEN)
 except Exception as e:
     logger.error(f"HSM signing failed: {e}")
     exit()
@@ -126,7 +137,7 @@ tx.vin[0].script_witness = witness
 # --- Finalize ---
 tx_hex = tx.serialize(include_witness=True).hex()
 logger.info(f"Signed Transaction Hex:{tx_hex[:80]}...")
-logger.debug(f"Full Signed Transaction Hex: {tx_hex}")
+logger.info(f"Full Signed Transaction Hex: {tx_hex}")
 
 
 fee_paid = utxo["value"] - sum(o.value for o in tx.vout)
@@ -134,4 +145,4 @@ logger.info(f"vSize: {tx.vsize} bytes")
 logger.info(f"Fee: {fee_paid} sats ({fee_paid / tx.vsize:.2f} sat/vbyte)")
 
 # Uncomment to broadcast the signed transaction
-txid = broadcast_tx(NODE_API_URL, access_token, tx_hex)
+#txid = broadcast_tx(NODE_API_URL, access_token, tx_hex)

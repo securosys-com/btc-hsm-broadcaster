@@ -34,6 +34,16 @@ This project enables the creation, signing, and broadcasting of **Bitcoin testne
    * `NODE_CLIENT_SECRET`
 4. These will allow authenticated access to the testnet API and UTXO services
 
+Sample Curl-requests: 
+
+#### Get UTXOS for Address: 
+ACCESS_TOKEN=
+
+curl \
+--request GET \
+--location "https://enterprise.blockstream.info/testnet/api/address/tb1q680p9239dsze0jwfm8ccf0zaepu9nk5jansrns/utxo" \
+--header "Authorization: Bearer ${ACCESS_TOKEN}"
+
 ---
 
 ### 📁 Environment Configuration
