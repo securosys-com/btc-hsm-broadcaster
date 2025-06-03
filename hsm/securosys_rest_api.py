@@ -69,7 +69,7 @@ def sign_with_hsm(tsb_api_url: str, data_to_sign_bytes: bytes, key_label: str, a
         logger.info(f"Successfully received signature from HSM for key '{key_label}'.")
         logger.info(f"HSM Signature (Base64): {signature_b64[:80]}...")
 
-        return base64.b64decode(signature_b64)
+        return base64.b64decode(signature_b64), signature_b64, payload
 
     except requests.exceptions.Timeout:
         logger.error(f"HSM signing request timed out for key '{key_label}' at {endpoint}.")
@@ -182,6 +182,93 @@ def fetchKeysFromHsm(tsb_api_url: str, access_token: str = '') -> dict:
 
     except requests.exceptions.RequestException as e:
         logger.error(f"HTTP error during HSM key listing: {e}")
+        raise
+
+def getOrCreateSecp256k1Key(tsb_api_url: str, key_label: str, access_token: str = '') -> dict:
+    """
+    (Stub implementation—replace with your real logic.)
+    This function should attempt to fetch or create a secp256k1 key,
+    then return its attributes as a dict.
+    """
+    endpoint = tsb_api_url.rstrip('/') + "/key/secp256k1"
+    headers = {"Content-Type": "application/json"}
+    if access_token:
+        headers["Authorization"] = f"Bearer {access_token}"
+    payload = {"label": key_label}
+
+    resp = requests.post(endpoint, headers=headers, json=payload, timeout=30)
+    resp.raise_for_status()
+    return resp.json()
+
+class HsmKeyError(Exception):
+    """Base exception for HSM‐related errors."""
+    pass
+
+class HsmKeyNotFoundError(HsmKeyError):
+    """Raised when the HSM reports that a key does not exist (errorCode=650)."""
+    def __init__(self, key_label: str, error_code: int, reason: str, message: str):
+        super().__init__(f"Key '{key_label}' not found (errorCode={error_code}, reason={reason}): {message}")
+        self.key_label = key_label
+        self.error_code = error_code
+        self.reason = reason
+        self.message = message
+
+def fetchKeyAttributeFromHsm(tsb_api_url: str, key_label: str, access_token: str = '') -> dict:
+    """
+    Fetch key attributes from the HSM. If the HSM returns 404 with errorCode=650 (key not found),
+    raise HsmKeyNotFoundError. For any other non-200 response, raise HsmKeyError.
+    On success (HTTP 200), return the parsed JSON dict.
+    """
+    endpoint = tsb_api_url.rstrip('/') + "/key/attributes"
+    headers = {"Content-Type": "application/json"}
+    if access_token:
+        headers["Authorization"] = f"Bearer {access_token}"
+
+    payload = {"label": key_label}
+
+    try:
+        resp = requests.post(endpoint, headers=headers, json=payload, timeout=30)
+
+        if resp.status_code != 200:
+            # Attempt to parse JSON error body
+            try:
+                error_body = resp.json()
+            except ValueError:
+                # Not valid JSON—log and raise a generic HTTPError
+                logger.error(
+                    "HSM returned HTTP %d for key '%s', but response is not valid JSON: %s",
+                    resp.status_code, key_label, resp.text
+                )
+                resp.raise_for_status()
+
+            error_code = error_body.get("errorCode", None)
+            reason     = error_body.get("reason", None)
+            message    = error_body.get("message", None)
+
+            # Specific “key not found” case: 404 + errorCode=650 + reason=res.error.key.not.existent
+            if resp.status_code == 404 and error_code == 650 and reason == "res.error.key.not.existent":
+                logger.info(
+                    "Key '%s' not found (errorCode=%s). Raising HsmKeyNotFoundError.",
+                    key_label, error_code
+                )
+                raise HsmKeyNotFoundError(key_label, error_code, reason, message)
+
+            # Otherwise: log and raise a generic HsmKeyError
+            logger.error(
+                "HSM returned HTTP %d for key '%s': errorCode=%s, reason=%s, message=%s",
+                resp.status_code, key_label, error_code, reason, message
+            )
+            raise HsmKeyError(f"HSM error {error_code} ({reason}): {message}")
+
+        # status_code == 200 → return parsed JSON
+        return resp.json()
+
+    except requests.exceptions.Timeout:
+        logger.error(f"Request to HSM at {endpoint} timed out after 30 seconds.")
+        raise
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"HTTP error during HSM key attribute fetch for '{key_label}': {e}")
         raise
 
 def getOrCreateSecp256k1Key(tsb_api_url: str, key_label: str, access_token: str = '') -> dict:
