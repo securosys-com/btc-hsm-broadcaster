@@ -93,6 +93,12 @@ Run the transaction script:
 python main.py
 ```
 
+or using streamlit:
+
+```bash
+streamlit run streamlit_app.py
+```
+
 This script will:
 
 1. Retrieve or create a key from your HSM
