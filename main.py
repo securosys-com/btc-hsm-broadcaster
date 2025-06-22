@@ -29,7 +29,7 @@ logger.setLevel(logging.INFO)
 NETWORKS["testnet"]  # Required for btclib's testnet address parsing
 HSM_TSB_API_URL = os.getenv("TSB_API_URL")
 HSM_KEY_LABEL = os.getenv("TSB_KEY_LABEL")
-HSM_ACCESS_TOKEN = os.getenv("HSM_ACCESS_TOKEN", "")
+TSB_ACCESS_TOKEN = os.getenv("TSB_ACCESS_TOKEN", "")
 RECIPIENT_ADDRESS_STR = os.getenv("TO_ADDRESS_NEW")
 NODE_API_URL = os.getenv("NODE_API_URL")
 NODE_CLIENT_ID = os.getenv("NODE_CLIENT_ID")
@@ -113,7 +113,7 @@ tx = Tx(version=2, lock_time=0, vin=[tx_in], vout=tx_outs)
 
 tx_raw_payload = get_segwit_v0_data_for_hsm_sha256(script_code_bytes, tx, 0, 0x01, utxo["value"])
 try:
-    presigned_sig = sign_with_hsm(HSM_TSB_API_URL, tx_raw_payload, HSM_KEY_LABEL, HSM_ACCESS_TOKEN)            
+    presigned_sig = sign_with_hsm(HSM_TSB_API_URL, tx_raw_payload, HSM_KEY_LABEL, TSB_ACCESS_TOKEN)            
 except Exception as e:
     logger.error(f"HSM signing failed: {e}")
     exit()

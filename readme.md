@@ -37,12 +37,14 @@ This project enables the creation, signing, and broadcasting of **Bitcoin testne
 Sample Curl-requests: 
 
 #### Get UTXOS for Address: 
+```
 ACCESS_TOKEN=
 
 curl \
 --request GET \
 --location "https://enterprise.blockstream.info/testnet/api/address/tb1q680p9239dsze0jwfm8ccf0zaepu9nk5jansrns/utxo" \
 --header "Authorization: Bearer ${ACCESS_TOKEN}"
+```
 
 ---
 
@@ -54,7 +56,7 @@ Create a `.env` file based on this template:
 # HSM Configuration
 TSB_API_URL=https://sbx-rest-api.cloudshsm.com/v1/
 TSB_KEY_LABEL=btc-test-key
-HSM_ACCESS_TOKEN=your_securosys_bearer_access_token_here
+TSB_ACCESS_TOKEN=your_securosys_bearer_access_token_here
 
 # Blockstream Node API
 NODE_AUTH_URL=https://login.blockstream.com/realms/blockstream-public/protocol/openid-connect/token
