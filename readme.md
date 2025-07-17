@@ -140,9 +140,3 @@ project/
 * Uses **Securosys HSM** for secure private key storage and signing
 * No private key material leaves the HSM
 * Secure API tokens required for both HSM and transaction broadcasting
-
----
-
-## 📄 License
-
-MIT License — you are free to use, modify, and distribute.
